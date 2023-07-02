@@ -38,12 +38,13 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static("./cred"));
 var serviceAccount = require("./cred/med4us-website.json");
+const { userInfo } = require("os");
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
 });
 // Configure CORS middleware
-const allowedOrigins = ["https://med4us.in", "*"]; // Add your allowed origins
+const allowedOrigins = ["http://localhost:3000", "*"]; // Add your allowed origins
 const corsOptions = {
   origin: function (origin, callback) {
     if (allowedOrigins.includes(origin) || !origin) {
@@ -61,7 +62,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// app.use(cors(corsOptions));
+app.use(cors(corsOptions));
 // Define routes and middleware
 app.get("/", (req, res) => {
   res.send("Hello, World!");
@@ -102,6 +103,78 @@ app.get("/notification-send", (req, res) => {
     }
   });
   res.send("mail send");
+});
+
+app.get("/lead-msg", (req, res) => {
+  let messageData = [];
+  admin
+    .firestore()
+    .collection("submit_form_messages")
+    .get()
+    .then((querySnapshot) => {
+      querySnapshot.forEach((doc) => {
+        // doc.data() is never undefined for query doc snapshots
+        console.log(doc.id, " => ", doc.data());
+        messageData.push(doc.data());
+      });
+      res.status(200).json({ message: messageData });
+    })
+    .catch((error) => {
+      res.status(500).json({ message: error });
+    });
+});
+
+app.get("/user-activity", (req, res) => {
+  admin
+    .auth()
+    .listUsers()
+    .then((userInfo) => {
+      {
+        console.log(userInfo);
+        res.status(200).json({ user: userInfo });
+      }
+    });
+});
+
+app.get("/dashboard-count", (req, res) => {
+  let countMsg = 0;
+  let countUsers = 0;
+
+  const collectionRef = admin.firestore().collection("submit_form_messages");
+
+  // Get the count of documents in "submit_form_messages" collection
+  collectionRef
+    .get()
+    .then((querySnapshot) => {
+      countMsg = querySnapshot.size;
+
+      const collectionRefUser = admin
+        .firestore()
+        .collection("admin_users_login");
+
+      // Get the count of documents in "admin_users_login" collection
+      collectionRefUser
+        .get()
+        .then((querySnapshot) => {
+          countUsers = querySnapshot.size;
+
+          res
+            .status(200)
+            .json({ lead_count: countMsg, admin_count: countUsers });
+        })
+        .catch((error) => {
+          console.log("Error getting documents:", error);
+          res
+            .status(500)
+            .json({ error: "An error occurred while fetching user count." });
+        });
+    })
+    .catch((error) => {
+      console.log("Error getting documents:", error);
+      res
+        .status(500)
+        .json({ error: "An error occurred while fetching message count." });
+    });
 });
 
 // Start the server
