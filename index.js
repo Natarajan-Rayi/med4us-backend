@@ -44,7 +44,11 @@ admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
 });
 // Configure CORS middleware
-const allowedOrigins = ["http://localhost:3000", "*"]; // Add your allowed origins
+const allowedOrigins = [
+  "http://localhost:3000",
+  "https://med4us-admin-panel.onrender.com",
+  "*",
+]; // Add your allowed origins
 const corsOptions = {
   origin: function (origin, callback) {
     if (allowedOrigins.includes(origin) || !origin) {
